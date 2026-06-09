@@ -4,16 +4,17 @@ IFACE ?= enp0s3
 
 all: $(TARGET_KERN) $(TARGET_USER)
 
-# Compile the Kernel eBPF program
 $(TARGET_KERN): xdp_firewall/firewall_kern.bpf.c
-	clang -O2 -g -target bpf \
+	clang -O2 -g -target bpf -D__x86_64__ \
+	-I/usr/include/bpf \
 	-I/usr/include/x86_64-linux-gnu \
-	-c xdp_firewall/firewall_kern.bpf.c -o $(TARGET_KERN)
+	-c xdp_firewall/firewall_kern.bpf.c \
+	-o $(TARGET_KERN)
 
-# Compile the User Space program
 $(TARGET_USER): xdp_firewall/firewall_usr.c
-	clang -O2 -g \
-	xdp_firewall/firewall_usr.c -o $(TARGET_USER) -lbpf -lelf -lz
+	gcc -O2 -g \
+	xdp_firewall/firewall_usr.c \
+	-o $(TARGET_USER) -lbpf -lelf -lz
 
 load: $(TARGET_KERN)
 	sudo ip link set dev $(IFACE) xdp obj $(TARGET_KERN) sec xdp

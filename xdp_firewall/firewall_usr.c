@@ -4,6 +4,8 @@
 #include <bpf/libbpf.h>
 #include <net/if.h>
 #include <unistd.h>
+#include <linux/in.h>
+#include <linux/ip.h>
 #include <linux/if_link.h>
 #include "firewall.h"
 #include "../ML_model/firewall_xgb_model.h"
@@ -11,6 +13,7 @@
 const char *bpf_object_file = "build/firewall_kern.bpf.o";
 const char *bpf_program_name = "xdp_monitor";
 const char *if_name = "enp0s3";
+#define THRESHOLD -90000LL
 
 long long get_model_score(struct connection_record *record) {
     long long features[9];
@@ -28,15 +31,13 @@ long long get_model_score(struct connection_record *record) {
 }
 
 char* get_protocol_name(__u8 protocol) {
+
     switch (protocol) {
-        case IPPROTO_TCP:
-            return "TCP";
-        case IPPROTO_UDP:
-            return "UDP";
-        case IPPROTO_ICMP:
-            return "ICMP";
+        case IPPROTO_TCP:      return "TCP";
+        case IPPROTO_UDP:      return "UDP";
+        case IPPROTO_ICMP:     return "ICMP";
         default:
-            return "OTHER";
+            return "UNKNOWN";
     }
 }
 
@@ -105,7 +106,7 @@ int main()
                 inet_ntop(AF_INET, &next_key.dst_ip, dst_ip, sizeof(dst_ip));
                 
                 long long model_score = get_model_score(&record);
-                char *action = (model_score > 0) ? "DROPPED" : "PASSED";
+                char *action = (model_score > THRESHOLD) ? "DROPPED" : "PASSED";
                 // Print raw data separated by commas
                 printf("DATA,%s,%s,%d,%d,%s,%lld,%s\n\n", src_ip, dst_ip, ntohs(next_key.src_port), ntohs(next_key.dst_port), get_protocol_name(next_key.protocol), model_score, action);
                 fflush(stdout); // Force output immediately

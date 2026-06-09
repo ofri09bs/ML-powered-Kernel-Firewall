@@ -15,4 +15,5 @@ __pycache__/
 .vscode/
 /build/
 build/
+test.py
 CIC-IDS-2017/

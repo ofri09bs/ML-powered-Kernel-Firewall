@@ -3,7 +3,7 @@ import numpy as np
 import os
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, accuracy_score, confusion_matrix, recall_score
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix, recall_score, f1_score
 import m2cgen as m2c
 
 def load_and_prepare_data(csv_path):
@@ -73,14 +73,14 @@ def process_dataset():
     print(y.value_counts())
 
     # the class distribution is still imbalanced, so we will use binary classification for benign vs Non-benign
-    y = y.apply(lambda x: 1 if x == 'BENIGN' else 0)
+    y = y.apply(lambda x: 0 if x == 'BENIGN' else 1)
     print("Binary class distribution:")
     print(y.value_counts()) 
 
     # To balance the dataset, we will undersample the majority class (benign) to match the number of samples in the minority class (non-benign)
-    benign_count = y.value_counts()[1]
-    non_benign_count = y.value_counts()[0]
-    y.drop(y[y == 1].sample(n=benign_count - non_benign_count).index, inplace=True)
+    benign_count = y.value_counts().get(0, 0)  # number of non-benign samples
+    non_benign_count = y.value_counts().get(1, 0)  # number of benign samples
+    y.drop(y[y == 0].sample(n=benign_count - non_benign_count).index, inplace=True)
     X = X.loc[y.index]
     print("Binary class distribution after undersampling:")
     print(y.value_counts())
@@ -101,6 +101,16 @@ def build_and_train_model(X, y):
 
     print("Training model...")
     model.fit(X_train, y_train)
+
+    # Find the best threshold for converting raw scores to binary predictions
+    raw_scores = model.get_booster().predict(xgb.DMatrix(X_test), output_margin=True)
+    best_thresh, best_f1 = 0, 0
+    for t in range(-2000000, 2000000, 10000):
+        preds = (raw_scores * 1_000_000 > t).astype(int)
+        f1 = f1_score(y_test, preds)
+        if f1 > best_f1:
+            best_f1, best_thresh = f1, t
+    print(f"Best threshold: {best_thresh} (scaled), F1: {best_f1:.4f}")
 
     print("Evaluating model...")
     y_pred = model.predict(X_test)
