@@ -6,11 +6,39 @@
 #include <unistd.h>
 #include <linux/if_link.h>
 #include "firewall.h"
+#include "ML_model/firewall_xgb_model.h"
 
 const char *bpf_object_file = "firewall_kern.bpf.o";
 const char *bpf_program_name = "xdp_monitor";
 const char *if_name = "enp0s3";
 
+long long get_model_score(struct connection_record *record) {
+    long long features[9];
+    features[0] = record->packet_count;
+    features[1] = record->byte_count;
+    features[2] = record->min_packet_size;
+    features[3] = record->max_packet_size;
+    features[4] = record->syn_count;
+    features[5] = record->fin_count;
+    features[6] = record->ack_count;
+    features[7] = record->rst_count;
+    features[8] = record->avg_inter_arrival_time;
+
+    return calc_model_score(features);
+}
+
+char* get_protocol_name(__u8 protocol) {
+    switch (protocol) {
+        case IPPROTO_TCP:
+            return "TCP";
+        case IPPROTO_UDP:
+            return "UDP";
+        case IPPROTO_ICMP:
+            return "ICMP";
+        default:
+            return "OTHER";
+    }
+}
 
 int main()
 {
@@ -76,17 +104,19 @@ int main()
                 inet_ntop(AF_INET, &next_key.src_ip, src_ip, sizeof(src_ip));
                 inet_ntop(AF_INET, &next_key.dst_ip, dst_ip, sizeof(dst_ip));
                 
-                printf("Connection: %s:%u -> %s:%u\n", src_ip, ntohs(next_key.src_port), dst_ip, ntohs(next_key.dst_port));
-                printf("  Packets: %llu, Bytes: %llu, First Seen: %llu, Last Seen: %llu, Min Size: %llu, Max Size: %llu, SYN: %llu, FIN: %llu, ACK: %llu, RST: %llu, Avg IAT: %llu\n",
-                    record.packet_count, record.byte_count, record.first_seen, record.last_seen, 
-                    record.min_packet_size, record.max_packet_size, record.syn_count, 
-                    record.fin_count, record.ack_count, record.rst_count, record.avg_inter_arrival_time);
+                long long model_score = get_model_score(&record);
+                char *action = (model_score > 0) ? "DROPPED" : "PASSED";
+                // Print raw data separated by commas
+                printf("DATA,%s,%s,%d,%d,%s,%lld,%s\n\n", src_ip, dst_ip, ntohs(next_key.src_port), ntohs(next_key.dst_port), get_protocol_name(next_key.protocol), model_score, action);
+                fflush(stdout); // Force output immediately
             }
 
             current_key = next_key;
             prev_key_ptr = &current_key;
         }
-        sleep(15);
+        sleep(1);
+        printf("CLEAR\n");
+        fflush(stdout);
     }
 
     bpf_object__close(obj);
