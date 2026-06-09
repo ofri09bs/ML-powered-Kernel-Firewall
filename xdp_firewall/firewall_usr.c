@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <linux/if_link.h>
 #include "firewall.h"
-#include "ML_model/firewall_xgb_model.h"
+#include "../ML_model/firewall_xgb_model.h"
 
-const char *bpf_object_file = "firewall_kern.bpf.o";
+const char *bpf_object_file = "build/firewall_kern.bpf.o";
 const char *bpf_program_name = "xdp_monitor";
 const char *if_name = "enp0s3";
 

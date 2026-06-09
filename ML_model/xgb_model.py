@@ -153,13 +153,11 @@ if __name__ == "__main__":
     model = build_and_train_model(X, y)
     print("Generating C code from model...")
     c_code = m2c.export_to_c(model)
-    with open("xgboost_model.c", "w") as f:
+    with open("firewall_xgb_model.h", "w") as f:
         f.write(c_code)
-    print("C code saved to xgboost_model.c")
+    print("C code saved to firewall_xgb_model.h")
     print("Converting C code to eBPF-compatible format...")
-    convert_m2cgen_to_ebpf("xgboost_model.c", "xgboost_model_ebpf.c")
-    print("All done!")
-    
+    convert_m2cgen_to_ebpf("firewall_xgb_model.h", "firewall_xgb_model.h")    
 
 
 

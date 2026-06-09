@@ -5,7 +5,7 @@
 #include <linux/in.h>
 #include <linux/tcp.h>
 #include "firewall.h"
-#include "ML_model/firewall_xgb_model.h"
+#include "../ML_model/firewall_xgb_model.h"
 
 #define THRESHOLD 1000000 // Placeholder threshold for model score
 

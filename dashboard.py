@@ -39,7 +39,7 @@ def generate_table(connections):
 
 def run_dashboard():
     process = subprocess.Popen(
-        ['./firewall_usr'], 
+        ['./build/firewall_usr'], 
         stdout=subprocess.PIPE, 
         text=True
     )

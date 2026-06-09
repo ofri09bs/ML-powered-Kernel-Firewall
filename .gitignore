@@ -1,7 +1,7 @@
 venv/
 __pycache__/
 *.pyc
-
+.env
 # kernel build artifacts
 *.o
 *.ko
@@ -12,6 +12,7 @@ __pycache__/
 *.d
 *.tmp
 *.bak
-
+.vscode/
+/build/
 build/
 CIC-IDS-2017/
